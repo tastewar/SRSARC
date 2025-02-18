@@ -108,7 +108,7 @@ void MyIncrement(void *pArg)
   lastInputTime = millis();
   if ( !DisplayState )
   {
-    TurnDisplaysOn();
+    UpdateDisplays();
   }
   else
   {
@@ -122,7 +122,7 @@ void MyDecrement(void *pArg)
   lastInputTime = millis();
   if ( !DisplayState )
   {
-    TurnDisplaysOn();
+    UpdateDisplays();
   }
   else
   {
@@ -136,7 +136,7 @@ void MyZero(void *pArg)
   lastInputTime = millis();
   if ( !DisplayState )
   {
-    TurnDisplaysOn();
+    UpdateDisplays();
   }
   else
   {
