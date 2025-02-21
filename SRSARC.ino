@@ -34,13 +34,27 @@ Adafruit_7segment rowBled = Adafruit_7segment();
 Adafruit_7segment pattled = Adafruit_7segment();
 
 GFXcanvas16 canvas(240, 135);
+
 uint8_t rowA=0, rowB=0, patt=0;
-const uint8_t rowApin = 0, rowBpin = 2, pattpin = 1, proj1Pin = 11, proj3Pin = 10, battCheckPin = A2;
+
+// built-in display switches
+const uint8_t rowApin = 0, rowBpin = 2, pattpin = 1;
+
+// rotary switch
+const uint8_t proj1Pin = 11, proj3Pin = 10;
+
+// foot pedal
+const uint8_t leftPedalPin = 6, middlePedalPin = 5; // right = 5 + 6 -- need to handle this in code!
+
+// analog -- battery check
+const uint8_t battCheckPin = A2;
 uint8_t proj = 0;
 
 Switch rowAButton(rowApin, INPUT_PULLUP, LOW, 50, 1000, 500);
 Switch rowBButton(rowBpin, INPUT_PULLDOWN, HIGH, 50, 1000, 500);
 Switch pattButton(pattpin, INPUT_PULLDOWN, HIGH, 50, 1000, 500);
+Switch leftPedalButton(leftPedalPin, INPUT_PULLUP, LOW, 50, 1000, 500);
+Switch middlePedalButton(middlePedalPin, INPUT_PULLUP, LOW, 50, 1000, 500);
 
 Adafruit_MAX17048 lipo;
 Adafruit_ST7789 display = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
@@ -148,40 +162,6 @@ void MyZero(void *pArg)
 float voltage = 0.0;
 float oldVoltage = 0.0;
 
-void UpdateDisplays()
-{
-  TurnDisplaysOn();
-  canvas.fillScreen(ST77XX_BLACK);
-  canvas.setCursor(0, 17);
-  canvas.setTextColor(ST77XX_RED);
-  canvas.print("Row Counter A: ");
-  canvas.println(rowA, DEC);
-  rowAled.print(rowA, DEC);
-  rowAled.writeDisplay();
-  canvas.setTextColor(ST77XX_GREEN);
-  canvas.print("Project Number: ");
-  canvas.println(proj, DEC);
-  canvas.setTextColor(ST77XX_WHITE); 
-  canvas.print("Pattern Count: ");
-  canvas.println(patt, DEC);
-  pattled.print(patt, DEC);
-  pattled.writeDisplay();
-  canvas.setTextColor(ST77XX_BLUE); 
-  canvas.print(ps == PSUSB ? "USB  " : "Batt " );
-  canvas.print(lipo.cellPercent(), 0);
-  canvas.println("%");
-
-  canvas.setTextColor(ST77XX_YELLOW);
-  canvas.print("Row Counter B: ");
-  canvas.println(rowB, DEC);
-  rowBled.print(rowB, DEC);
-  rowBled.writeDisplay();
-  canvas.println("");
-  display.drawRGBBitmap(0, 0, canvas.getBuffer(), 240, 135);
-  pinMode(TFT_BACKLITE, OUTPUT);
-  digitalWrite(TFT_BACKLITE, HIGH);
-}
-
 void setup()
 {
 #ifdef DEBUGGING
@@ -236,13 +216,21 @@ void setup()
   rowAButton.setDoubleClickCallback(MyDecrement,&rowA);
   rowAButton.setLongPressCallback(MyZero,&rowA);
 
+  pattButton.setSingleClickCallback(MyIncrement,&patt);
+  pattButton.setDoubleClickCallback(MyDecrement,&patt);
+  pattButton.setLongPressCallback(MyZero,&patt);
+  
   rowBButton.setSingleClickCallback(MyIncrement,&rowB);
   rowBButton.setDoubleClickCallback(MyDecrement,&rowB);
   rowBButton.setLongPressCallback(MyZero,&rowB);
 
-  pattButton.setSingleClickCallback(MyIncrement,&patt);
-  pattButton.setDoubleClickCallback(MyDecrement,&patt);
-  pattButton.setLongPressCallback(MyZero,&patt);
+  leftPedalButton.setSingleClickCallback(MyIncrement,&rowA);
+  leftPedalButton.setDoubleClickCallback(MyDecrement,&rowA);
+  leftPedalButton.setLongPressCallback(MyZero,&rowA);
+  
+  middlePedalButton.setSingleClickCallback(MyIncrement,&patt);
+  middlePedalButton.setDoubleClickCallback(MyDecrement,&patt);
+  middlePedalButton.setLongPressCallback(MyZero,&patt);
   
   proj = GetProjectFromSelector();
   GetCountersForProj(proj);
@@ -251,6 +239,40 @@ void setup()
 #ifdef DEBUGGING
   Serial.println("Exiting Setup");
 #endif
+}
+
+void UpdateDisplays()
+{
+  TurnDisplaysOn();
+  canvas.fillScreen(ST77XX_BLACK);
+  canvas.setCursor(0, 17);
+  canvas.setTextColor(ST77XX_RED);
+  canvas.print("Row Counter A: ");
+  canvas.println(rowA, DEC);
+  rowAled.print(rowA, DEC);
+  rowAled.writeDisplay();
+  canvas.setTextColor(ST77XX_GREEN);
+  canvas.print("Project Number: ");
+  canvas.println(proj, DEC);
+  canvas.setTextColor(ST77XX_WHITE); 
+  canvas.print("Pattern Count: ");
+  canvas.println(patt, DEC);
+  pattled.print(patt, DEC);
+  pattled.writeDisplay();
+  canvas.setTextColor(ST77XX_BLUE); 
+  canvas.print(ps == PSUSB ? "USB  " : "Batt " );
+  canvas.print(lipo.cellPercent(), 0);
+  canvas.println("%");
+
+  canvas.setTextColor(ST77XX_YELLOW);
+  canvas.print("Row Counter B: ");
+  canvas.println(rowB, DEC);
+  rowBled.print(rowB, DEC);
+  rowBled.writeDisplay();
+  canvas.println("");
+  display.drawRGBBitmap(0, 0, canvas.getBuffer(), 240, 135);
+  pinMode(TFT_BACKLITE, OUTPUT);
+  digitalWrite(TFT_BACKLITE, HIGH);
 }
 
 float GetVoltage()
@@ -287,6 +309,8 @@ void loop()
   rowAButton.poll();
   rowBButton.poll();
   pattButton.poll();
+  leftPedalButton.poll();
+  middlePedalButton.poll();
   if ( rowA != oldRowA || rowB != oldRowB || patt != oldPatt )
   {
     SaveCountersForProj(proj);
