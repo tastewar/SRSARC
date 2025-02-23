@@ -59,6 +59,33 @@ Switch middlePedalButton(middlePedalPin, INPUT_PULLUP, LOW, 50, 1000, 500);
 Adafruit_MAX17048 lipo;
 Adafruit_ST7789 display = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
 
+void DrawBatteryGauge(float percent)
+{
+  const uint8_t BATTERY_WIDTH = 80, BATTERY_HEIGHT = 22, LEFT_EDGE = 156, TOP_EDGE = 27*3+4;
+  const uint8_t BUTTON_WIDTH = 4, BUTTON_MARGIN = BATTERY_HEIGHT / 4;
+  const uint8_t FILL_HEIGHT = BATTERY_HEIGHT - 2, FILL_WIDTH = BATTERY_WIDTH - BUTTON_WIDTH - 2;
+  const uint8_t BUTTON_HEIGHT = BATTERY_HEIGHT - (2 * BUTTON_MARGIN);
+  uint16_t fillColor = ST77XX_WHITE;
+  percent = percent > 100.0 ? 100 : percent;
+  canvas.drawRect(LEFT_EDGE + BUTTON_WIDTH, TOP_EDGE, BATTERY_WIDTH, BATTERY_HEIGHT, ST77XX_WHITE);    // Empty battery
+  canvas.fillRect(LEFT_EDGE, TOP_EDGE + BUTTON_MARGIN, BUTTON_WIDTH, BUTTON_HEIGHT, ST77XX_WHITE);     // Button on top of cell -- height = 1/4 margin, 1/2 button, 1/4 margin
+  int8_t fill = FILL_WIDTH * percent / 100;
+  //canvas.fillRect(display.width() - BATTERY_WIDTH - 1, 5, BATTERY_WIDTH - 2, BATTERY_HEIGHT - fill, ST77XX_BLACK);
+  if (percent <= 10.0)
+  {
+    fillColor = ST77XX_RED;
+  }
+  else if (percent <= 30.0)
+  {
+    fillColor = ST77XX_YELLOW;
+  }
+  else
+  {
+    fillColor = ST77XX_GREEN;
+  }
+  canvas.fillRect(LEFT_EDGE + BUTTON_WIDTH + (BATTERY_WIDTH-1) - fill, TOP_EDGE+1, fill, FILL_HEIGHT, fillColor);
+}
+
 void GetCountersForProj(uint8_t pnum)
 {
   uint32_t CurProj = 0;
@@ -160,7 +187,7 @@ void MyZero(void *pArg)
 }
 
 float voltage = 0.0;
-float oldVoltage = 0.0;
+float battPct = 0.0;
 
 void setup()
 {
@@ -208,6 +235,7 @@ void setup()
   pinMode(battCheckPin, INPUT);
   pinMode(proj1Pin, INPUT_PULLUP);
   pinMode(proj3Pin, INPUT_PULLUP);
+  pinMode(TFT_BACKLITE, OUTPUT);
   analogReadResolution(12);
   analogSetAttenuation(ADC_11db);
 
@@ -260,18 +288,17 @@ void UpdateDisplays()
   pattled.print(patt, DEC);
   pattled.writeDisplay();
   canvas.setTextColor(ST77XX_BLUE); 
-  canvas.print(ps == PSUSB ? "USB  " : "Batt " );
-  canvas.print(lipo.cellPercent(), 0);
-  canvas.println("%");
-
+  canvas.println(ps == PSUSB ? "USB  " : "Battery " );
+  //canvas.print(lipo.cellPercent(), 0);
+  //canvas.println("%");
   canvas.setTextColor(ST77XX_YELLOW);
   canvas.print("Row Counter B: ");
   canvas.println(rowB, DEC);
   rowBled.print(rowB, DEC);
   rowBled.writeDisplay();
   canvas.println("");
+  DrawBatteryGauge(lipo.cellPercent());
   display.drawRGBBitmap(0, 0, canvas.getBuffer(), 240, 135);
-  pinMode(TFT_BACKLITE, OUTPUT);
   digitalWrite(TFT_BACKLITE, HIGH);
 }
 
@@ -283,9 +310,12 @@ float GetVoltage()
 void loop()
 {
   uint8_t oldRowA, oldRowB, oldPatt, oldProj, oldPS;
+  float oldBattPct;
   oldPS = ps;
   ps = GetPowerSource();
-  if ( oldPS != ps )
+  oldBattPct = battPct;
+  battPct = lipo.cellPercent();
+  if ( oldPS != ps || oldBattPct != battPct )
   {
     UpdateDisplays();
   }
@@ -293,8 +323,6 @@ void loop()
   {
     TurnDisplaysOff();
   }
-  oldVoltage = voltage;
-  voltage = GetVoltage();
   oldProj = proj;
   proj = GetProjectFromSelector();
   if ( oldProj != proj )
