@@ -375,19 +375,21 @@ void loop()
   ps = GetPowerSource();
   oldBattPct = battPct;
   battPct = lipo.cellPercent();
-  if ( oldPS != ps || oldBattPct != battPct )
+  if ( oldPS != ps )
   {
     TurnDisplaysOn();
-    UpdateDisplays();
-  }
-  if ( oldBattPct != battPct && DisplayState )
-  {
     UpdateDisplays();
   }
   else if (PSBatt == ps && millis() - lastInputTime > SCREEN_TIMEOUT_MS )
   {
     TurnDisplaysOff();
   }
+
+  if ( oldBattPct != battPct && DisplayState )
+  {
+    UpdateDisplays();
+  }
+
   oldProj = proj;
   proj = GetProjectFromSelector();
   if ( oldProj != proj )
