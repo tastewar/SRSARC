@@ -380,6 +380,10 @@ void loop()
     TurnDisplaysOn();
     UpdateDisplays();
   }
+  if ( oldBattPct != battPct && DisplayState )
+  {
+    UpdateDisplays();
+  }
   else if (PSBatt == ps && millis() - lastInputTime > SCREEN_TIMEOUT_MS )
   {
     TurnDisplaysOff();
