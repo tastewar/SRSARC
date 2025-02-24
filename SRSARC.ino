@@ -62,6 +62,13 @@ void fpCallBack(uint8_t vPin, uint8_t event)
   Serial.print(event,DEC);
   Serial.println(")");
 #endif
+  lastInputTime = millis();
+  if ( !DisplayState )
+  {
+    TurnDisplaysOn();
+    UpdateDisplays();
+    return;
+  }
   uint8_t *pNum;
   switch (vPin)
   {
@@ -200,6 +207,7 @@ void MyIncrement(void *pArg)
   lastInputTime = millis();
   if ( !DisplayState )
   {
+    TurnDisplaysOn();
     UpdateDisplays();
   }
   else
@@ -214,6 +222,7 @@ void MyDecrement(void *pArg)
   lastInputTime = millis();
   if ( !DisplayState )
   {
+    TurnDisplaysOn();
     UpdateDisplays();
   }
   else
@@ -228,6 +237,7 @@ void MyZero(void *pArg)
   lastInputTime = millis();
   if ( !DisplayState )
   {
+    TurnDisplaysOn();
     UpdateDisplays();
   }
   else
@@ -367,6 +377,7 @@ void loop()
   battPct = lipo.cellPercent();
   if ( oldPS != ps || oldBattPct != battPct )
   {
+    TurnDisplaysOn();
     UpdateDisplays();
   }
   else if (PSBatt == ps && millis() - lastInputTime > SCREEN_TIMEOUT_MS )
