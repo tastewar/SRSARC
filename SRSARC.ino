@@ -11,9 +11,12 @@
 #include <Preferences.h>
 #include <driver/adc.h>
 #include <avdweb_Switch.h>
+#include "pedal.h"
 
 #define RW_MODE false
 #define RO_MODE true
+
+//#define DEBUGGING
 
 unsigned long lastInputTime = 0;
 const static unsigned long SCREEN_TIMEOUT_MS = 30000;
@@ -44,18 +47,66 @@ const uint8_t rowApin = 0, rowBpin = 2, pattpin = 1;
 const uint8_t proj1Pin = 11, proj3Pin = 10;
 
 // foot pedal
-const uint8_t leftPedalPin = 6, middlePedalPin = 5; // right = 5 + 6 -- need to handle this in code!
+const uint8_t leftPedalPin = 6, middlePedalPin = 5, vrightPedalPin = 99;
 
 // analog -- battery check
 const uint8_t battCheckPin = A2;
 uint8_t proj = 0;
 
+void fpCallBack(uint8_t vPin, uint8_t event)
+{
+#ifdef DEBUGGING
+  Serial.print("In callback(");
+  Serial.print(vPin,DEC);
+  Serial.print(",");
+  Serial.print(event,DEC);
+  Serial.println(")");
+#endif
+  uint8_t *pNum;
+  switch (vPin)
+  {
+    case leftPedalPin:
+    {
+      pNum = &rowA;
+      break;
+    }
+    case middlePedalPin:
+    {
+      pNum = &patt;
+      break;
+    }
+    case vrightPedalPin:
+    {
+      pNum = &rowB;
+      break;
+    }
+  }
+  switch (event)
+  {
+    case FPSingleClick:
+    {
+      *pNum+=1;
+      break;
+    }
+    case FPDoubleClick:
+    {
+      *pNum-=1;
+      break;
+    }
+    case FPHold:
+    {
+      *pNum = 0;
+      break;
+    }
+  }
+}
+
 Switch rowAButton(rowApin, INPUT_PULLUP, LOW, 50, 1000, 500);
 Switch rowBButton(rowBpin, INPUT_PULLDOWN, HIGH, 50, 1000, 500);
 Switch pattButton(pattpin, INPUT_PULLDOWN, HIGH, 50, 1000, 500);
-Switch leftPedalButton(leftPedalPin, INPUT_PULLUP, LOW, 50, 1000, 500);
-Switch middlePedalButton(middlePedalPin, INPUT_PULLUP, LOW, 50, 1000, 500);
-
+//Switch leftPedalButton(leftPedalPin, INPUT_PULLUP, LOW, 50, 1000, 500);
+//Switch middlePedalButton(middlePedalPin, INPUT_PULLUP, LOW, 50, 1000, 500);
+FootPedal fp(leftPedalPin, middlePedalPin, vrightPedalPin, fpCallBack);
 Adafruit_MAX17048 lipo;
 Adafruit_ST7789 display = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
 
@@ -252,13 +303,13 @@ void setup()
   rowBButton.setDoubleClickCallback(MyDecrement,&rowB);
   rowBButton.setLongPressCallback(MyZero,&rowB);
 
-  leftPedalButton.setSingleClickCallback(MyIncrement,&rowA);
+  /*leftPedalButton.setSingleClickCallback(MyIncrement,&rowA);
   leftPedalButton.setDoubleClickCallback(MyDecrement,&rowA);
   leftPedalButton.setLongPressCallback(MyZero,&rowA);
   
   middlePedalButton.setSingleClickCallback(MyIncrement,&patt);
   middlePedalButton.setDoubleClickCallback(MyDecrement,&patt);
-  middlePedalButton.setLongPressCallback(MyZero,&patt);
+  middlePedalButton.setLongPressCallback(MyZero,&patt);*/
   
   proj = GetProjectFromSelector();
   GetCountersForProj(proj);
@@ -271,7 +322,6 @@ void setup()
 
 void UpdateDisplays()
 {
-  TurnDisplaysOn();
   canvas.fillScreen(ST77XX_BLACK);
   canvas.setCursor(0, 17);
   canvas.setTextColor(ST77XX_RED);
@@ -329,6 +379,7 @@ void loop()
   {
     lastInputTime = millis();
     GetCountersForProj(proj);
+    TurnDisplaysOn();
     UpdateDisplays();
   }
   oldRowA = rowA;
@@ -337,12 +388,14 @@ void loop()
   rowAButton.poll();
   rowBButton.poll();
   pattButton.poll();
-  leftPedalButton.poll();
-  middlePedalButton.poll();
+  fp.poll();
+  //leftPedalButton.poll();
+  //middlePedalButton.poll();
   if ( rowA != oldRowA || rowB != oldRowB || patt != oldPatt )
   {
     SaveCountersForProj(proj);
     lastInputTime = millis();
+    TurnDisplaysOn();
     UpdateDisplays();
   }
 }
